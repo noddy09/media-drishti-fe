@@ -1,0 +1,82 @@
+import React, { useRef, useState } from 'react';
+import { Container, Typography, Paper, Box, Button, Input, List, ListItem, ListItemText, Alert } from '@mui/material';
+import { uploadFile, fetchUploads } from '../api/uploads';
+
+const UploadPage: React.FC = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploads, setUploads] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const formData = new FormData();
+      formData.append('file', files[0]);
+      formData.append('file_type', files[0].type.startsWith('image') ? 'image' : 'pdf');
+      formData.append('tenant', 'default'); // Replace with actual tenant logic
+      try {
+        await uploadFile(formData);
+        setSuccess('File uploaded successfully!');
+        setError(null);
+        loadUploads();
+      } catch (err: any) {
+        setError('Upload failed.');
+        setSuccess(null);
+      }
+    }
+  };
+
+  const loadUploads = async () => {
+    try {
+      const data = await fetchUploads();
+      setUploads(data);
+    } catch {
+      setUploads([]);
+    }
+  };
+
+  React.useEffect(() => {
+    loadUploads();
+  }, []);
+
+  return (
+    <Container maxWidth="sm">
+      <Paper elevation={3} sx={{ mt: 8, p: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Upload Newspaper PDF/Image
+        </Typography>
+        <Box display="flex" flexDirection="column" alignItems="center">
+          <Input
+            type="file"
+            inputRef={fileInputRef}
+            onChange={handleFileChange}
+            inputProps={{ accept: '.pdf,image/*' }}
+            sx={{ mb: 2 }}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            Choose File
+          </Button>
+        </Box>
+        {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
+        <Box sx={{ mt: 4 }}>
+          <Typography variant="h6">Uploaded Files</Typography>
+          <List>
+            {uploads.map((u) => (
+              <ListItem key={u.id} divider>
+                <ListItemText primary={u.file} secondary={u.file_type} />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </Paper>
+    </Container>
+  );
+};
+
+export default UploadPage;
