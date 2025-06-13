@@ -1,6 +1,5 @@
 import React from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
-import logo from './logo.svg';
 import './App.css';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
@@ -13,6 +12,8 @@ import { RootState } from './store';
 import DownloadsPage from './pages/DownloadsPage';
 import AuditLogPage from './pages/AuditLogPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import UserManagementPage from './pages/UserManagementPage';
+import TagManagementPage from './pages/TagManagementPage';
 
 const ProtectedRoute: React.FC = () => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -33,6 +34,8 @@ function App() {
           <Route path="/downloads" element={<DownloadsPage />} />
           <Route path="/auditlog" element={<AuditLogPage />} />
           <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
+          <Route path="/user-management" element={<UserManagementPage />} />
+          <Route path="/tag-management" element={<TagManagementPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

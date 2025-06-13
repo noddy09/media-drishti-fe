@@ -12,7 +12,13 @@ const ManualEntryPage: React.FC = () => {
   const loadEntries = async () => {
     try {
       const data = await fetchManualEntries();
-      setEntries(data);
+      if (Array.isArray(data)) {
+        setEntries(data);
+      } else if (data && Array.isArray(data.results)) {
+        setEntries(data.results);
+      } else {
+        setEntries([]);
+      }
     } catch {
       setEntries([]);
     }

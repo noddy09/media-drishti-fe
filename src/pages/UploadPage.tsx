@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Container, Typography, Paper, Box, Button, Input, List, ListItem, ListItemText, Alert } from '@mui/material';
+import { Container, Typography, Paper, Box, Button, Input, List, ListItem, ListItemText, Alert, TextField } from '@mui/material';
 import { uploadFile, fetchUploads } from '../api/uploads';
 
 const UploadPage: React.FC = () => {
@@ -7,6 +7,7 @@ const UploadPage: React.FC = () => {
   const [uploads, setUploads] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [fileName, setFileName] = useState('');
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -15,10 +16,12 @@ const UploadPage: React.FC = () => {
       formData.append('file', files[0]);
       formData.append('file_type', files[0].type.startsWith('image') ? 'image' : 'pdf');
       formData.append('tenant', 'default'); // Replace with actual tenant logic
+      formData.append('name', fileName || files[0].name); // Pass user-provided name or fallback to original
       try {
         await uploadFile(formData);
         setSuccess('File uploaded successfully!');
         setError(null);
+        setFileName('');
         loadUploads();
       } catch (err: any) {
         setError('Upload failed.');
@@ -30,7 +33,14 @@ const UploadPage: React.FC = () => {
   const loadUploads = async () => {
     try {
       const data = await fetchUploads();
-      setUploads(data);
+      // Fix: ensure uploads is always an array
+      if (Array.isArray(data)) {
+        setUploads(data);
+      } else if (data && Array.isArray(data.results)) {
+        setUploads(data.results);
+      } else {
+        setUploads([]);
+      }
     } catch {
       setUploads([]);
     }
@@ -47,6 +57,14 @@ const UploadPage: React.FC = () => {
           Upload Newspaper PDF/Image
         </Typography>
         <Box display="flex" flexDirection="column" alignItems="center">
+          <TextField
+            label="File Name"
+            value={fileName}
+            onChange={e => setFileName(e.target.value)}
+            sx={{ mb: 2 }}
+            fullWidth
+            placeholder="Enter a name for the file (optional)"
+          />
           <Input
             type="file"
             inputRef={fileInputRef}
@@ -69,7 +87,10 @@ const UploadPage: React.FC = () => {
           <List>
             {uploads.map((u) => (
               <ListItem key={u.id} divider>
-                <ListItemText primary={u.file} secondary={u.file_type} />
+                <ListItemText
+                  primary={u.name ? `${u.name}` : u.file}
+                  secondary={`Type: ${u.file_type} | Uploaded: ${u.uploaded_at ? new Date(u.uploaded_at).toLocaleString() : ''}`}
+                />
               </ListItem>
             ))}
           </List>

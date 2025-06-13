@@ -6,7 +6,17 @@ const DownloadsPage: React.FC = () => {
   const [downloads, setDownloads] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchDownloads().then(setDownloads).catch(() => setDownloads([]));
+    fetchDownloads()
+      .then(data => {
+        if (Array.isArray(data)) {
+          setDownloads(data);
+        } else if (data && Array.isArray(data.results)) {
+          setDownloads(data.results);
+        } else {
+          setDownloads([]);
+        }
+      })
+      .catch(() => setDownloads([]));
   }, []);
 
   return (

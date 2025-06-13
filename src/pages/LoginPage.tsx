@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { login } from '../slices/authSlice';
 import { useNavigate } from 'react-router-dom';
 import { Container, Box, TextField, Button, Typography, Paper } from '@mui/material';
+import api from '../api';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -10,11 +11,21 @@ const LoginPage: React.FC = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // For demo, accept any username/password and assign role 'employee'
-    dispatch(login({ username, role: 'employee' }));
-    navigate('/dashboard');
+    try {
+      // Call backend JWT login endpoint
+      const res = await api.post('auth/token/', { username, password });
+      const { access, refresh } = res.data;
+      localStorage.setItem('access', access);
+      localStorage.setItem('refresh', refresh);
+      // Decode JWT to get user info (role, username)
+      const payload = JSON.parse(atob(access.split('.')[1]));
+      dispatch(login({ username: payload.username, role: payload.role, accessToken: access }));
+      navigate('/dashboard');
+    } catch (err) {
+      alert('Invalid credentials');
+    }
   };
 
   return (

@@ -22,7 +22,7 @@ const Navbar: React.FC = () => {
         <Typography variant="h6" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')}>
           E-News Platform
         </Typography>
-        {isAuthenticated && user && (
+        {isAuthenticated && user ? (
           <>
             <Box sx={{ mr: 2 }}>Hi, {user.username}</Box>
             <Button color="inherit" component={RouterLink} to="/dashboard">Dashboard</Button>
@@ -31,9 +31,18 @@ const Navbar: React.FC = () => {
             <Button color="inherit" component={RouterLink} to="/clipping">Clipping</Button>
             <Button color="inherit" component={RouterLink} to="/downloads">Downloads</Button>
             <Button color="inherit" component={RouterLink} to="/auditlog">Audit Log</Button>
-            <Button color="inherit" component={RouterLink} to="/admin-dashboard">Admin Dashboard</Button>
+            {/* Only show Admin Dashboard and User Management for admin users */}
+            {user.role === 'admin' && (
+              <>
+                <Button color="inherit" component={RouterLink} to="/admin-dashboard">Admin Dashboard</Button>
+                <Button color="inherit" component={RouterLink} to="/user-management">User Management</Button>
+                <Button color="inherit" component={RouterLink} to="/tag-management">Tag Management</Button>
+              </>
+            )}
             <Button color="inherit" onClick={handleLogout}>Logout</Button>
           </>
+        ) : (
+          <Button color="inherit" component={RouterLink} to="/login">Login</Button>
         )}
       </Toolbar>
     </AppBar>

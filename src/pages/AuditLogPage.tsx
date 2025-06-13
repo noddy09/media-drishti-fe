@@ -5,8 +5,23 @@ import { fetchAuditLogs } from '../api/auditlog';
 const AuditLogPage: React.FC = () => {
   const [logs, setLogs] = useState<any[]>([]);
 
+  const loadLogs = async () => {
+    try {
+      const data = await fetchAuditLogs();
+      if (Array.isArray(data)) {
+        setLogs(data);
+      } else if (data && Array.isArray(data.results)) {
+        setLogs(data.results);
+      } else {
+        setLogs([]);
+      }
+    } catch {
+      setLogs([]);
+    }
+  };
+
   useEffect(() => {
-    fetchAuditLogs().then(setLogs).catch(() => setLogs([]));
+    loadLogs();
   }, []);
 
   return (
