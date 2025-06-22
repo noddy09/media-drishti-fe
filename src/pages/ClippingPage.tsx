@@ -52,6 +52,9 @@ const ClippingPage: React.FC = () => {
         y: parseFloat(clip.y),
         width: parseInt(clip.width),
         height: parseInt(clip.height),
+        overlay_width: parseInt(clip.overlayWidth),
+        overlay_height: parseInt(clip.overlayHeight),
+        page_number: parseInt(clip.pageNumber),
         tags,
       });
       setSaveSuccess('Clip saved and tagged!');

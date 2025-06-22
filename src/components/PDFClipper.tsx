@@ -10,7 +10,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/$
 
 interface PDFClipperProps {
   fileUrl: string;
-  onClip: (clip: { x: number; y: number; width: number; height: number }) => void;
+  onClip: (clip: { x: number; y: number; width: number; height: number; overlayWidth: number; overlayHeight: number; pageNumber: number }) => void;
   fileType?: 'pdf' | 'image';
 }
 
@@ -108,7 +108,12 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
 
   const handleMouseUp = () => {
     if (clipping && isDragging) {
-      onClip(clipping);
+      onClip({
+        ...clipping,
+        overlayWidth: mainViewerWidth,
+        overlayHeight: fileType === 'pdf' ? pageHeight : containerSize.height,
+        pageNumber,
+      });
     }
     setStart(null);
     setIsDragging(false);

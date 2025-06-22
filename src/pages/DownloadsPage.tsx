@@ -1,44 +1,89 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Paper, Box, Button, List, ListItem, ListItemText } from '@mui/material';
-import { fetchDownloads } from '../api/downloads';
+import { Container, Typography, Paper, Box, Button, Checkbox, FormControlLabel, FormGroup, CircularProgress, Alert } from '@mui/material';
+import { fetchTags } from '../api/tagging';
+import api from '../api';
 
 const DownloadsPage: React.FC = () => {
-  const [downloads, setDownloads] = useState<any[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
+  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [downloading, setDownloading] = useState(false);
+  const [loadingTags, setLoadingTags] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDownloads()
-      .then(data => {
-        if (Array.isArray(data)) {
-          setDownloads(data);
-        } else if (data && Array.isArray(data.results)) {
-          setDownloads(data.results);
-        } else {
-          setDownloads([]);
-        }
+    setLoadingTags(true);
+    fetchTags()
+      .then((data) => {
+        setTags(Array.isArray(data) ? data : data?.results || []);
+        setLoadingTags(false);
       })
-      .catch(() => setDownloads([]));
+      .catch(() => {
+        setTags([]);
+        setLoadingTags(false);
+      });
   }, []);
+
+  const handleTagToggle = (tagId: number) => {
+    setSelectedTags((prev) =>
+      prev.includes(tagId) ? prev.filter((id) => id !== tagId) : [...prev, tagId]
+    );
+  };
+
+  const handleDownload = async () => {
+    if (selectedTags.length === 0) return;
+    setDownloading(true);
+    setError(null);
+    try {
+      const response = await api.post('clipping/clips/export-clips/', { tag_ids: selectedTags }, {
+        responseType: 'blob',
+        withCredentials: true,
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'merged_clips.pdf');
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+    } catch (e: any) {
+      setError('Failed to export PDF. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <Container maxWidth="md">
       <Paper elevation={3} sx={{ mt: 8, p: 4 }}>
         <Typography variant="h5" gutterBottom>
-          Download Branded PDFs
+          Export Clipped Regions by Tag
         </Typography>
-        <Box>
-          <Typography color="textSecondary" sx={{ mb: 2 }}>
-            [List of downloadable PDFs will appear here]
-          </Typography>
-          <List>
-            {downloads.map((d) => (
-              <ListItem key={d.id} divider>
-                <ListItemText primary={d.upload} secondary={d.downloaded_by} />
-                <Button variant="contained" color="primary" disabled>
-                  Download
-                </Button>
-              </ListItem>
-            ))}
-          </List>
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle1">Select Tags to Export Clips:</Typography>
+          {loadingTags ? (
+            <Box sx={{ my: 2 }}><CircularProgress size={24} /></Box>
+          ) : (
+            <FormGroup row>
+              {tags.map((tag: any) => (
+                <FormControlLabel
+                  key={tag.id}
+                  control={<Checkbox checked={selectedTags.includes(tag.id)} onChange={() => handleTagToggle(tag.id)} />}
+                  label={tag.name}
+                />
+              ))}
+            </FormGroup>
+          )}
+          <Button
+            variant="contained"
+            color="primary"
+            sx={{ mt: 2 }}
+            onClick={handleDownload}
+            disabled={selectedTags.length === 0 || downloading || loadingTags}
+            aria-label="Download merged PDF of selected tags"
+          >
+            {downloading ? <CircularProgress size={24} /> : 'Download PDF'}
+          </Button>
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </Box>
       </Paper>
     </Container>
