@@ -47,11 +47,14 @@ const ManualEntryPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await createManualEntry({ ...form, tags: form.tags.join(','), tenant: 'default' });
+      // Send tag names directly - backend will create new tags if needed
+      await createManualEntry({ ...form, tags: form.tags, tenant: 'default' });
       setSuccess('Entry created!');
       setError(null);
       setForm({ title: '', content: '', tags: [] });
       loadEntries();
+      // Refresh tags list to include any newly created tags
+      fetchTags().then((tags: any[]) => setAllTags(tags));
     } catch {
       setError('Failed to create entry.');
       setSuccess(null);

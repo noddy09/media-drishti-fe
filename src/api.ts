@@ -1,8 +1,18 @@
 import axios from 'axios';
 import Cookies from 'js-cookie';
 
+// Resolve API base URL:
+// - REACT_APP_API_BASE takes precedence when provided
+// - In production builds, default to same-origin '/api/' so nginx can proxy
+// - In development, fall back to Django dev server on 8000
+const apiBase =
+  process.env.REACT_APP_API_BASE ||
+  (process.env.NODE_ENV === 'production'
+    ? '/api/'
+    : 'http://127.0.0.1:8000/api/');
+
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/', // Use full backend URL for local dev
+  baseURL: apiBase,
   withCredentials: true,
 });
 
