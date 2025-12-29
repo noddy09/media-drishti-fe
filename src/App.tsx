@@ -7,13 +7,15 @@ import UploadPage from './pages/UploadPage';
 import ManualEntryPage from './pages/ManualEntryPage';
 import ClippingPage from './pages/ClippingPage';
 import Navbar from './Navbar';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from './store';
 import DownloadsPage from './pages/DownloadsPage';
 import AuditLogPage from './pages/AuditLogPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import UserManagementPage from './pages/UserManagementPage';
 import TagManagementPage from './pages/TagManagementPage';
+import { login } from './slices/authSlice';
+import Cookies from 'js-cookie';
 
 const ProtectedRoute: React.FC = () => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
@@ -21,6 +23,29 @@ const ProtectedRoute: React.FC = () => {
 };
 
 function App() {
+  const dispatch = useDispatch();
+
+  React.useEffect(() => {
+    const token = Cookies.get('access');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Date.now() / 1000;
+        if (payload.exp > currentTime) {
+          dispatch(login({ username: payload.username, role: payload.role, accessToken: token }));
+        } else {
+          // Token expired
+          Cookies.remove('access');
+          Cookies.remove('refresh');
+        }
+      } catch (e) {
+        // Invalid token
+        Cookies.remove('access');
+        Cookies.remove('refresh');
+      }
+    }
+  }, [dispatch]);
+
   return (
     <>
       <Navbar />
@@ -36,8 +61,8 @@ function App() {
           <Route path="/admin-dashboard" element={<AdminDashboardPage />} />
           <Route path="/user-management" element={<UserManagementPage />} />
           <Route path="/tag-management" element={<TagManagementPage />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>
-        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </>
   );
