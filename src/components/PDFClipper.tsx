@@ -24,11 +24,12 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
   const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 500, height: 500 });
   const containerRef = useRef<HTMLDivElement>(null);
   const transformRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   // For PDF thumbnails
   const [thumbnails, setThumbnails] = useState<string[]>([]);
 
-  // Track the rendered height of the PDF page
+  const [originalWidth, setOriginalWidth] = useState<number>(0);
   const [pageHeight, setPageHeight] = useState<number>(containerSize.height);
 
   // Generate thumbnails for all pages (PDF only)
@@ -64,6 +65,27 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
   // Adjust main viewer and overlay for sidebar only if thumbnails are present (PDF)
   const mainViewerWidth = thumbnails.length > 0 ? containerSize.width - 120 : containerSize.width;
 
+  const displayClipping = React.useMemo(() => {
+    if (!clipping) return null;
+    if (fileType === 'pdf') {
+      return clipping; // transform handles scaling
+    } else if (imgRef.current) {
+      const img = imgRef.current;
+      const scale = Math.min(mainViewerWidth / img.naturalWidth, containerSize.height / img.naturalHeight);
+      const displayedWidth = img.naturalWidth * scale;
+      const displayedHeight = img.naturalHeight * scale;
+      const offsetX = (mainViewerWidth - displayedWidth) / 2;
+      const offsetY = (containerSize.height - displayedHeight) / 2;
+      return {
+        x: offsetX + clipping.x * scale,
+        y: offsetY + clipping.y * scale,
+        width: clipping.width * scale,
+        height: clipping.height * scale,
+      };
+    }
+    return clipping;
+  }, [clipping, fileType, mainViewerWidth, containerSize.height]);
+
   // Prevent zoom unless Ctrl is pressed
   const handleWheel = (ref: ReactZoomPanPinchRef, e: WheelEvent) => {
     if (!e.ctrlKey) {
@@ -86,7 +108,25 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
     if (e.button !== 0) return;
     const rect = overlayRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setStart({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+    const rx = e.clientX - rect.left;
+    const ry = e.clientY - rect.top;
+    if (fileType === 'image' && imgRef.current) {
+      const img = imgRef.current;
+      const scale = Math.min(mainViewerWidth / img.naturalWidth, containerSize.height / img.naturalHeight);
+      const displayedWidth = img.naturalWidth * scale;
+      const displayedHeight = img.naturalHeight * scale;
+      const offsetX = (mainViewerWidth - displayedWidth) / 2;
+      const offsetY = (containerSize.height - displayedHeight) / 2;
+      const imgX = rx - offsetX;
+      const imgY = ry - offsetY;
+      if (imgX < 0 || imgY < 0 || imgX > displayedWidth || imgY > displayedHeight) return;
+      setStart({ x: imgX / scale, y: imgY / scale });
+    } else {
+      const state = transformRef.current?.state;
+      if (!state) return;
+      const renderedScale = originalWidth ? mainViewerWidth / originalWidth : 1;
+      setStart({ x: ((rx - state.positionX) / state.scale) / renderedScale, y: ((ry - state.positionY) / state.scale) / renderedScale });
+    }
     setClipping(null);
     setIsDragging(true);
     setDisablePan(true); // Disable pan while clipping
@@ -96,13 +136,32 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
     if (!start || !isDragging) return;
     const rect = overlayRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const rx = e.clientX - rect.left;
+    const ry = e.clientY - rect.top;
+    let currentX: number, currentY: number;
+    if (fileType === 'image' && imgRef.current) {
+      const img = imgRef.current;
+      const scale = Math.min(mainViewerWidth / img.naturalWidth, containerSize.height / img.naturalHeight);
+      const displayedWidth = img.naturalWidth * scale;
+      const displayedHeight = img.naturalHeight * scale;
+      const offsetX = (mainViewerWidth - displayedWidth) / 2;
+      const offsetY = (containerSize.height - displayedHeight) / 2;
+      const imgX = rx - offsetX;
+      const imgY = ry - offsetY;
+      currentX = imgX / scale;
+      currentY = imgY / scale;
+    } else {
+      const state = transformRef.current?.state;
+      if (!state) return;
+      const renderedScale = originalWidth ? mainViewerWidth / originalWidth : 1;
+      currentX = ((rx - state.positionX) / state.scale) / renderedScale;
+      currentY = ((ry - state.positionY) / state.scale) / renderedScale;
+    }
     setClipping({
-      x: Math.min(start.x, x),
-      y: Math.min(start.y, y),
-      width: Math.abs(x - start.x),
-      height: Math.abs(y - start.y),
+      x: Math.min(start.x, currentX),
+      y: Math.min(start.y, currentY),
+      width: Math.abs(currentX - start.x),
+      height: Math.abs(currentY - start.y),
     });
   };
 
@@ -124,6 +183,7 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
   const handlePageRenderSuccess = (page: any) => {
     const viewport = page.getViewport({ scale: 1 });
     setPageHeight(viewport.height * (mainViewerWidth / viewport.width));
+    setOriginalWidth(viewport.width);
   };
 
   // Prevent scrolling to next page by locking scroll range to current page's height
@@ -137,12 +197,12 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
   }, [pageNumber, mainViewerWidth, pageHeight]);
 
   return (
-    <Box ref={containerRef} sx={{ position: 'relative', width: '100%', height: 500, bgcolor: '#222', display: 'flex', flexDirection: 'row' }}>
+    <Box ref={containerRef} sx={{ position: 'relative', width: '100%', height: '100%', bgcolor: '#222', display: 'flex', flexDirection: 'row' }}>
       {/* Main Viewer */}
       <Box sx={{ flex: 1, position: 'relative', height: 1, overflow: 'hidden' }}>
         <Box
           ref={scrollBoxRef}
-          sx={{ width: '100%', height: 500, overflow: 'auto', position: 'relative' }}
+          sx={{ width: '100%', height: '100%', overflow: 'auto', position: 'relative' }}
         >
           <TransformWrapper
             ref={transformRef}
@@ -161,7 +221,7 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
                   width: 'max-content',
                   height: 'max-content',
                   minWidth: '100%',
-                  minHeight: 500,
+                  minHeight: '100%',
                   // Prevent extra scroll by limiting height to current page
                   maxHeight: fileType === 'pdf' ? pageHeight : undefined,
                   overflow: 'hidden',
@@ -181,6 +241,7 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
                   </Document>
                 ) : (
                   <img
+                    ref={imgRef}
                     src={fileUrl}
                     alt="Clipping Source"
                     style={{ width: mainViewerWidth, height: containerSize.height, objectFit: 'contain', display: 'block' }}
@@ -204,15 +265,15 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
                   onMouseLeave={handleMouseUp}
                   onWheel={handleOverlayWheel}
                 >
-                  {clipping && (
+                  {displayClipping && (
                     <Box
                       sx={{
                         position: 'absolute',
                         border: '2px dashed #00f',
-                        left: clipping.x,
-                        top: clipping.y,
-                        width: clipping.width,
-                        height: clipping.height,
+                        left: displayClipping.x,
+                        top: displayClipping.y,
+                        width: displayClipping.width,
+                        height: displayClipping.height,
                         pointerEvents: 'none',
                         background: 'rgba(0,0,255,0.08)',
                       }}
@@ -226,7 +287,7 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
       </Box>
       {/* Thumbnails Sidebar (PDF only) */}
       {fileType === 'pdf' && thumbnails.length > 0 && (
-        <Box sx={{ width: 120, height: 500, overflowY: 'auto', bgcolor: '#181818', p: 1, ml: 1, borderRadius: 1 }}>
+        <Box sx={{ width: 120, height: '100%', overflowY: 'auto', bgcolor: '#181818', p: 1, ml: 1, borderRadius: 1 }}>
           {thumbnails.map((thumb, idx) => (
             <Box
               key={idx}

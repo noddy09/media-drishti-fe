@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Typography, Paper, Box, Button, Checkbox, FormControlLabel, FormGroup, CircularProgress, Alert } from '@mui/material';
 import { fetchTags } from '../api/tagging';
+import { exportClips } from '../api/clipping';
 import api from '../api';
 
 const DownloadsPage: React.FC = () => {
@@ -34,11 +35,8 @@ const DownloadsPage: React.FC = () => {
     setDownloading(true);
     setError(null);
     try {
-      const response = await api.post('clipping/clips/export-clips/', { tag_ids: selectedTags }, {
-        responseType: 'blob',
-        withCredentials: true,
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const blob = await exportClips(selectedTags);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', 'merged_clips.pdf');

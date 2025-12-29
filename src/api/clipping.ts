@@ -10,4 +10,10 @@ export const createClip = async (clipData: any) => {
   return response.data;
 };
 
-export {};
+export const exportClips = async (tagIds: number[]) => {
+  const response = await api.post('clipping/clips/export_clips/', { tag_ids: tagIds }, {
+    responseType: 'blob',
+    withCredentials: true,
+  });
+  return response.data;
+};
