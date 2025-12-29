@@ -244,7 +244,16 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
               >
                 {fileType === 'pdf' ? (
                   <Document file={fileUrl} loading={<div>Loading PDF...</div>}>
-                    <Box sx={{ m: 0, p: 0 }}>
+                    <Box
+                      ref={overlayRef}
+                      sx={{
+                        position: 'relative',
+                        width: mainViewerWidth,
+                        height: pageHeight,
+                        m: 0,
+                        p: 0,
+                      }}
+                    >
                       <Page
                         pageNumber={pageNumber}
                         width={mainViewerWidth}
@@ -253,6 +262,42 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
                         className="pdf-page"
                         onRenderSuccess={handlePageRenderSuccess}
                       />
+                      {/* Overlay on top of the rendered page */}
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          width: mainViewerWidth,
+                          height: pageHeight,
+                          cursor: isDragging ? 'crosshair' : 'pointer',
+                          zIndex: 2,
+                          touchAction: 'none',
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleMouseDown(e);
+                        }}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                        onMouseLeave={handleMouseUp}
+                        onWheel={handleOverlayWheel}
+                      >
+                        {displayClipping && (
+                          <Box
+                            sx={{
+                              position: 'absolute',
+                              border: '2px dashed #00f',
+                              left: displayClipping.x,
+                              top: displayClipping.y,
+                              width: displayClipping.width,
+                              height: displayClipping.height,
+                              pointerEvents: 'none',
+                              background: 'rgba(0,0,255,0.08)',
+                            }}
+                          />
+                        )}
+                      </Box>
                     </Box>
                   </Document>
                 ) : (
@@ -264,38 +309,41 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
                     draggable={false}
                   />
                 )}
-                <Box
-                  ref={overlayRef}
-                  sx={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: mainViewerWidth,
-                    height: fileType === 'pdf' ? pageHeight : containerSize.height,
-                    cursor: isDragging ? 'crosshair' : 'pointer',
-                    zIndex: 2,
-                  }}
-                  onMouseDown={handleMouseDown}
-                  onMouseMove={handleMouseMove}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseUp}
-                  onWheel={handleOverlayWheel}
-                >
-                  {displayClipping && (
-                    <Box
-                      sx={{
-                        position: 'absolute',
-                        border: '2px dashed #00f',
-                        left: displayClipping.x,
-                        top: displayClipping.y,
-                        width: displayClipping.width,
-                        height: displayClipping.height,
-                        pointerEvents: 'none',
-                        background: 'rgba(0,0,255,0.08)',
-                      }}
-                    />
-                  )}
-                </Box>
+                {/* Image overlay (for image files) */}
+                {fileType !== 'pdf' && (
+                  <Box
+                    ref={overlayRef}
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: mainViewerWidth,
+                      height: containerSize.height,
+                      cursor: isDragging ? 'crosshair' : 'pointer',
+                      zIndex: 2,
+                    }}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
+                    onWheel={handleOverlayWheel}
+                  >
+                    {displayClipping && (
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          border: '2px dashed #00f',
+                          left: displayClipping.x,
+                          top: displayClipping.y,
+                          width: displayClipping.width,
+                          height: displayClipping.height,
+                          pointerEvents: 'none',
+                          background: 'rgba(0,0,255,0.08)',
+                        }}
+                      />
+                    )}
+                  </Box>
+                )}
               </Box>
             </TransformComponent>
           </TransformWrapper>
