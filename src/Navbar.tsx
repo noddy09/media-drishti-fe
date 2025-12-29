@@ -24,21 +24,21 @@ const Navbar: React.FC = () => {
         </Typography>
         {isAuthenticated && user ? (
           <>
-            <Box sx={{ mr: 2 }}>Hi, {user.username}</Box>
-            <Button color="inherit" component={RouterLink} to="/dashboard">Dashboard</Button>
-            <Button color="inherit" component={RouterLink} to="/upload">Upload</Button>
-            <Button color="inherit" component={RouterLink} to="/manual-entry">Manual Entry</Button>
-            <Button color="inherit" component={RouterLink} to="/clipping">Clipping</Button>
+            <Box sx={{ mr: 2 }}>Hi, {user.username} ({user.role})</Box>
+            {user.role === 'admin' && <Button color="inherit" component={RouterLink} to="/dashboard">Dashboard</Button>}
+            {user.role === 'admin' && <Button color="inherit" component={RouterLink} to="/upload">Upload</Button>}
+            {(user.role === 'admin' || user.role === 'employee') && <Button color="inherit" component={RouterLink} to="/manual-entry">Manual Entry</Button>}
+            {(user.role === 'admin' || user.role === 'employee') && <Button color="inherit" component={RouterLink} to="/clipping">Clipping</Button>}
             <Button color="inherit" component={RouterLink} to="/downloads">Downloads</Button>
-            <Button color="inherit" component={RouterLink} to="/auditlog">Audit Log</Button>
+            {(user.role === 'admin' || user.role === 'employee') && <Button color="inherit" component={RouterLink} to="/auditlog">Audit Log</Button>}
             {/* Only show Admin Dashboard and User Management for admin users */}
             {user.role === 'admin' && (
               <>
                 <Button color="inherit" component={RouterLink} to="/admin-dashboard">Admin Dashboard</Button>
                 <Button color="inherit" component={RouterLink} to="/user-management">User Management</Button>
-                <Button color="inherit" component={RouterLink} to="/tag-management">Tag Management</Button>
               </>
             )}
+            {(user.role === 'admin' || user.role === 'employee') && <Button color="inherit" component={RouterLink} to="/tag-management">Tag Management</Button>}
             <Button color="inherit" onClick={handleLogout}>Logout</Button>
           </>
         ) : (

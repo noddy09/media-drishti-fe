@@ -17,6 +17,7 @@ const UserManagementPage: React.FC = () => {
   const [open, setOpen] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
   const [form, setForm] = useState({ username: '', email: '', password: '', role: 'employee' });
+  const [error, setError] = useState<string>('');
 
   const fetchUsers = async () => {
     const res = await api.get('users/users/');
@@ -28,6 +29,7 @@ const UserManagementPage: React.FC = () => {
   const handleOpen = (user?: User) => {
     setEditUser(user || null);
     setForm(user ? { username: user.username, email: user.email, password: '', role: user.role || 'employee' } : { username: '', email: '', password: '', role: 'employee' });
+    setError('');
     setOpen(true);
   };
   const handleClose = () => setOpen(false);
@@ -40,13 +42,23 @@ const UserManagementPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (editUser) {
-      await api.put(`users/users/${editUser.id}/`, { ...form });
-    } else {
-      await api.post('users/users/', { ...form });
+    try {
+      setError('');
+      if (editUser) {
+        await api.put(`users/users/${editUser.id}/`, { ...form });
+      } else {
+        await api.post('users/users/', { ...form });
+      }
+      setOpen(false);
+      fetchUsers();
+    } catch (err: any) {
+      if (err.response?.data) {
+        const errors = Object.values(err.response.data).flat().join(', ');
+        setError(errors);
+      } else {
+        setError('An error occurred');
+      }
     }
-    setOpen(false);
-    fetchUsers();
   };
 
   const handleToggleActive = async (user: User) => {
@@ -91,6 +103,7 @@ const UserManagementPage: React.FC = () => {
         <Dialog open={open} onClose={handleClose}>
           <DialogTitle>{editUser ? 'Edit User' : 'Add User'}</DialogTitle>
           <DialogContent>
+            {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
             <TextField margin="dense" label="Username" name="username" value={form.username} onChange={handleChange} fullWidth />
             <TextField margin="dense" label="Email" name="email" value={form.email} onChange={handleChange} fullWidth />
             <TextField margin="dense" label="Password" name="password" value={form.password} onChange={handleChange} type="password" fullWidth />
