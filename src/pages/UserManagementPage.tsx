@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, Paper, Button, Table, TableHead, TableRow, TableCell, TableBody, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Chip, Select, MenuItem, InputLabel, FormControl } from '@mui/material';
 import api from '../api';
+import { fetchTags as fetchTagsAPI, createClientTag, deleteClientTag } from '../api/tagging';
 
 interface User {
   id: number;
@@ -10,6 +11,18 @@ interface User {
   is_staff: boolean;
   is_superuser?: boolean; // <-- add this line
   role?: string;
+  client_tags?: ClientTag[];
+}
+
+interface Tag {
+  id: number;
+  name: string;
+}
+
+interface ClientTag {
+  id: number;
+  client: number;
+  tag: Tag;
 }
 
 const UserManagementPage: React.FC = () => {
@@ -18,13 +31,27 @@ const UserManagementPage: React.FC = () => {
   const [editUser, setEditUser] = useState<User | null>(null);
   const [form, setForm] = useState({ username: '', email: '', password: '', role: 'employee' });
   const [error, setError] = useState<string>('');
+  const [tags, setTags] = useState<Tag[]>([]);
+  const [tagDialogOpen, setTagDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<User | null>(null);
+  const [selectedTag, setSelectedTag] = useState<number | ''>('');
 
   const fetchUsers = async () => {
     const res = await api.get('users/users/');
-    setUsers(res.data.results || res.data);
+    const data = res.data.results || res.data;
+    setUsers(data);
+    return data;
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  const loadTags = async () => {
+    const tagsRes = await fetchTagsAPI();
+    setTags(tagsRes.results || tagsRes);
+  };
+
+  useEffect(() => { 
+    fetchUsers(); 
+    loadTags();
+  }, []);
 
   const handleOpen = (user?: User) => {
     setEditUser(user || null);
@@ -66,6 +93,28 @@ const UserManagementPage: React.FC = () => {
     fetchUsers();
   };
 
+  const handleManageTags = (user: User) => {
+    setSelectedClient(user);
+    setTagDialogOpen(true);
+  };
+
+  const handleAddTag = async () => {
+    if (selectedTag && selectedClient) {
+      await createClientTag({ client: selectedClient.id, tag: selectedTag });
+      const refreshed = await fetchUsers();
+      const updated = refreshed.find((u: User) => u.id === selectedClient.id) || null;
+      setSelectedClient(updated);
+      setSelectedTag('');
+    }
+  };
+
+  const handleRemoveTag = async (clientTagId: number) => {
+    await deleteClientTag(clientTagId);
+    const refreshed = await fetchUsers();
+    const updated = selectedClient ? refreshed.find((u: User) => u.id === selectedClient.id) : null;
+    setSelectedClient(updated || null);
+  };
+
   return (
     <Box sx={{ mt: 8 }}>
       <Paper sx={{ p: 3 }}>
@@ -95,6 +144,7 @@ const UserManagementPage: React.FC = () => {
                 <TableCell>
                   <Button size="small" onClick={() => handleOpen(user)}>Edit</Button>
                   <Button size="small" onClick={() => handleToggleActive(user)}>{user.is_active ? 'Deactivate' : 'Activate'}</Button>
+                  {!user.is_staff && !user.is_superuser && <Button size="small" onClick={() => handleManageTags(user)}>Manage Tags</Button>}
                 </TableCell>
               </TableRow>
             ))}
@@ -119,6 +169,29 @@ const UserManagementPage: React.FC = () => {
           <DialogActions>
             <Button onClick={handleClose}>Cancel</Button>
             <Button onClick={handleSave} variant="contained">Save</Button>
+          </DialogActions>
+        </Dialog>
+        <Dialog open={tagDialogOpen} onClose={() => setTagDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Manage Tags for {selectedClient?.username}</DialogTitle>
+          <DialogContent>
+            <Typography variant="h6" sx={{ mb: 2 }}>Assigned Tags</Typography>
+            {(selectedClient?.client_tags || []).map(ct => (
+              <Chip key={ct.id} label={ct.tag.name} onDelete={() => handleRemoveTag(ct.id)} sx={{ mr: 1, mb: 1 }} />
+            ))}
+            <Box sx={{ mt: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Add Tag</InputLabel>
+                <Select value={selectedTag} label="Add Tag" onChange={(e) => setSelectedTag(e.target.value as number)}>
+                  {tags.filter(tag => !(selectedClient?.client_tags || []).some(ct => ct.tag.id === tag.id)).map(tag => (
+                    <MenuItem key={tag.id} value={tag.id}>{tag.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button variant="contained" sx={{ mt: 1 }} onClick={handleAddTag} disabled={!selectedTag}>Add Tag</Button>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setTagDialogOpen(false)}>Close</Button>
           </DialogActions>
         </Dialog>
       </Paper>

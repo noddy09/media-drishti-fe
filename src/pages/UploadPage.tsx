@@ -22,7 +22,7 @@ const UploadPage: React.FC = () => {
         setSuccess('File uploaded successfully!');
         setError(null);
         setFileName('');
-        loadUploads();
+        loadUploads(); 
       } catch (err: any) {
         setError('Upload failed.');
         setSuccess(null);
@@ -33,7 +33,7 @@ const UploadPage: React.FC = () => {
   const loadUploads = async () => {
     try {
       const data = await fetchUploads();
-      // Fix: ensure uploads is always an array
+      // Ensure uploads is always an array
       if (Array.isArray(data)) {
         setUploads(data);
       } else if (data && Array.isArray(data.results)) {

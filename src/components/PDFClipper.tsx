@@ -15,7 +15,6 @@ interface PDFClipperProps {
 }
 
 const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pdf' }) => {
-  const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [clipping, setClipping] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [start, setStart] = useState<{ x: number; y: number } | null>(null);
@@ -62,13 +61,29 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
     }
   }, [fileUrl]);
 
+  // Reset state when switching documents
+  React.useEffect(() => {
+    setPageNumber(1);
+    setClipping(null);
+    setStart(null);
+    setIsDragging(false);
+    setOriginalWidth(0);
+    setPageHeight(containerSize.height);
+  }, [fileUrl, fileType, containerSize.height]);
+
   // Adjust main viewer and overlay for sidebar only if thumbnails are present (PDF)
   const mainViewerWidth = thumbnails.length > 0 ? containerSize.width - 120 : containerSize.width;
 
   const displayClipping = React.useMemo(() => {
     if (!clipping) return null;
     if (fileType === 'pdf') {
-      return clipping; // transform handles scaling
+      const renderedScale = originalWidth ? mainViewerWidth / originalWidth : 1;
+      return {
+        x: clipping.x * renderedScale,
+        y: clipping.y * renderedScale,
+        width: clipping.width * renderedScale,
+        height: clipping.height * renderedScale,
+      };
     } else if (imgRef.current) {
       const img = imgRef.current;
       const scale = Math.min(mainViewerWidth / img.naturalWidth, containerSize.height / img.naturalHeight);
@@ -84,7 +99,7 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
       };
     }
     return clipping;
-  }, [clipping, fileType, mainViewerWidth, containerSize.height]);
+  }, [clipping, fileType, mainViewerWidth, containerSize.height, originalWidth]);
 
   // Prevent zoom unless Ctrl is pressed
   const handleWheel = (ref: ReactZoomPanPinchRef, e: WheelEvent) => {
@@ -100,14 +115,14 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
     }
   };
 
-  // Prevent pan when clipping
-  const [disablePan, setDisablePan] = useState(false);
-
   const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
     // Only start clipping if left mouse button
     if (e.button !== 0) return;
     const rect = overlayRef.current?.getBoundingClientRect();
     if (!rect) return;
+    // Avoid starting selection before the page/image is measured
+    if (fileType === 'pdf' && !originalWidth) return;
     const rx = e.clientX - rect.left;
     const ry = e.clientY - rect.top;
     if (fileType === 'image' && imgRef.current) {
@@ -122,17 +137,15 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
       if (imgX < 0 || imgY < 0 || imgX > displayedWidth || imgY > displayedHeight) return;
       setStart({ x: imgX / scale, y: imgY / scale });
     } else {
-      const state = transformRef.current?.state;
-      if (!state) return;
-      const renderedScale = originalWidth ? mainViewerWidth / originalWidth : 1;
-      setStart({ x: ((rx - state.positionX) / state.scale) / renderedScale, y: ((ry - state.positionY) / state.scale) / renderedScale });
+      const renderedScale = mainViewerWidth / originalWidth;
+      setStart({ x: rx / renderedScale, y: ry / renderedScale });
     }
     setClipping(null);
     setIsDragging(true);
-    setDisablePan(true); // Disable pan while clipping
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!start || !isDragging) return;
     const rect = overlayRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -151,11 +164,9 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
       currentX = imgX / scale;
       currentY = imgY / scale;
     } else {
-      const state = transformRef.current?.state;
-      if (!state) return;
-      const renderedScale = originalWidth ? mainViewerWidth / originalWidth : 1;
-      currentX = ((rx - state.positionX) / state.scale) / renderedScale;
-      currentY = ((ry - state.positionY) / state.scale) / renderedScale;
+      const renderedScale = mainViewerWidth / originalWidth;
+      currentX = rx / renderedScale;
+      currentY = ry / renderedScale;
     }
     setClipping({
       x: Math.min(start.x, currentX),
@@ -165,7 +176,8 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
     });
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (clipping && isDragging) {
       onClip({
         ...clipping,
@@ -176,7 +188,6 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
     }
     setStart(null);
     setIsDragging(false);
-    setDisablePan(false); // Re-enable pan after clipping
   };
 
   // Callback to get the rendered PDF page height
@@ -194,6 +205,10 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
       // Always scroll to top when page changes
       scrollBoxRef.current.scrollTop = 0;
     }
+    // Clear any in-progress selection when page changes
+    setClipping(null);
+    setStart(null);
+    setIsDragging(false);
   }, [pageNumber, mainViewerWidth, pageHeight]);
 
   return (
@@ -206,7 +221,7 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
         >
           <TransformWrapper
             ref={transformRef}
-            panning={{ disabled: disablePan }}
+            panning={{ disabled: true }}
             wheel={{
               disabled: false,
               step: 0.2,
@@ -228,16 +243,17 @@ const PDFClipper: React.FC<PDFClipperProps> = ({ fileUrl, onClip, fileType = 'pd
                 }}
               >
                 {fileType === 'pdf' ? (
-                  <Document
-                    file={fileUrl}
-                    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                    loading={<div>Loading PDF...</div>}
-                  >
-                    <Page
-                      pageNumber={pageNumber}
-                      width={mainViewerWidth}
-                      onRenderSuccess={handlePageRenderSuccess}
-                    />
+                  <Document file={fileUrl} loading={<div>Loading PDF...</div>}>
+                    <Box sx={{ m: 0, p: 0 }}>
+                      <Page
+                        pageNumber={pageNumber}
+                        width={mainViewerWidth}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        className="pdf-page"
+                        onRenderSuccess={handlePageRenderSuccess}
+                      />
+                    </Box>
                   </Document>
                 ) : (
                   <img
