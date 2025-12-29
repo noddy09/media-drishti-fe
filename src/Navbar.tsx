@@ -30,7 +30,7 @@ const Navbar: React.FC = () => {
             {(user.role === 'admin' || user.role === 'employee') && <Button color="inherit" component={RouterLink} to="/manual-entry">Manual Entry</Button>}
             {(user.role === 'admin' || user.role === 'employee') && <Button color="inherit" component={RouterLink} to="/clipping">Clipping</Button>}
             <Button color="inherit" component={RouterLink} to="/downloads">Downloads</Button>
-            {(user.role === 'admin' || user.role === 'employee') && <Button color="inherit" component={RouterLink} to="/auditlog">Audit Log</Button>}
+            {user.role === 'admin' && <Button color="inherit" component={RouterLink} to="/auditlog">Audit Log</Button>}
             {/* Only show Admin Dashboard and User Management for admin users */}
             {user.role === 'admin' && (
               <>
@@ -38,7 +38,7 @@ const Navbar: React.FC = () => {
                 <Button color="inherit" component={RouterLink} to="/user-management">User Management</Button>
               </>
             )}
-            {(user.role === 'admin' || user.role === 'employee') && <Button color="inherit" component={RouterLink} to="/tag-management">Tag Management</Button>}
+            {user.role === 'admin' && <Button color="inherit" component={RouterLink} to="/tag-management">Tag Management</Button>}
             <Button color="inherit" onClick={handleLogout}>Logout</Button>
           </>
         ) : (
