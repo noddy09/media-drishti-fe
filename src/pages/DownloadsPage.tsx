@@ -1,7 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Typography, Paper, Box, Button, Checkbox, FormControlLabel, FormGroup, CircularProgress, Alert } from '@mui/material';
+import {
+  Container,
+  Typography,
+  Paper,
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  CircularProgress,
+  Alert,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from '@mui/material';
 import { fetchTags } from '../api/tagging';
 import { exportClips } from '../api/clipping';
+import { fetchDownloads } from '../api/downloads';
 import api from '../api';
 
 const DownloadsPage: React.FC = () => {
@@ -10,6 +28,8 @@ const DownloadsPage: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
   const [loadingTags, setLoadingTags] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloadHistory, setDownloadHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
 
   useEffect(() => {
     setLoadingTags(true);
@@ -21,6 +41,19 @@ const DownloadsPage: React.FC = () => {
       .catch(() => {
         setTags([]);
         setLoadingTags(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    setLoadingHistory(true);
+    fetchDownloads()
+      .then((data) => {
+        setDownloadHistory(data);
+        setLoadingHistory(false);
+      })
+      .catch(() => {
+        setDownloadHistory([]);
+        setLoadingHistory(false);
       });
   }, []);
 
@@ -83,6 +116,36 @@ const DownloadsPage: React.FC = () => {
           </Button>
           {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
         </Box>
+      </Paper>
+
+      <Paper elevation={3} sx={{ mt: 4, p: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Download History
+        </Typography>
+        {loadingHistory ? (
+          <Box sx={{ my: 2 }}><CircularProgress size={24} /></Box>
+        ) : downloadHistory.length === 0 ? (
+          <Typography variant="body2" color="text.secondary">No downloads yet.</Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>File</TableCell>
+                  <TableCell>Downloaded At</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {downloadHistory.map((download: any) => (
+                  <TableRow key={download.id}>
+                    <TableCell>{download.upload_name}</TableCell>
+                    <TableCell>{new Date(download.downloaded_at).toLocaleString()}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Paper>
     </Container>
   );
