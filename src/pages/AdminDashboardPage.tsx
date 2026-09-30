@@ -20,7 +20,7 @@ const AdminDashboardPage: React.FC = () => {
             <Box key={idx} sx={{ flex: '1 1 200px', minWidth: 200, maxWidth: 300 }}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6">{stat.label}</Typography>
+                  <Typography variant="h6">{stat.name}</Typography>
                   <Typography variant="h4">{stat.value}</Typography>
                 </CardContent>
               </Card>
