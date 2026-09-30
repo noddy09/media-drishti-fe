@@ -1,4 +1,4 @@
-import api from '../api';
+import api, { unwrapList } from '../api';
 
 export const uploadFile = async (formData: FormData) => {
   const response = await api.post('uploads/', formData, {
@@ -10,7 +10,7 @@ export const uploadFile = async (formData: FormData) => {
 
 export const fetchUploads = async () => {
   const response = await api.get('uploads/', { withCredentials: true });
-  return response.data;
+  return unwrapList(response.data);
 };
 
 export {};

@@ -1,8 +1,8 @@
-import api from '../api';
+import api, { unwrapList } from '../api';
 
 export const fetchTags = async () => {
   const response = await api.get('tagging/tags/', { withCredentials: true });
-  return response.data;
+  return unwrapList(response.data);
 };
 
 export const createTag = async (tagData: any) => {
@@ -17,7 +17,7 @@ export const assignTagToClip = async (clipTagData: any) => {
 
 export const fetchClientTags = async () => {
   const response = await api.get('tagging/client-tags/', { withCredentials: true });
-  return response.data;
+  return unwrapList(response.data);
 };
 
 export const createClientTag = async (clientTagData: any) => {

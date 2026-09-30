@@ -15,7 +15,7 @@ const DownloadsPage: React.FC = () => {
     setLoadingTags(true);
     fetchTags()
       .then((data) => {
-        setTags(Array.isArray(data) ? data : data?.results || []);
+        setTags(data);
         setLoadingTags(false);
       })
       .catch(() => {

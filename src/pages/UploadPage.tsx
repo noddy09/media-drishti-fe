@@ -33,14 +33,7 @@ const UploadPage: React.FC = () => {
   const loadUploads = async () => {
     try {
       const data = await fetchUploads();
-      // Ensure uploads is always an array
-      if (Array.isArray(data)) {
-        setUploads(data);
-      } else if (data && Array.isArray(data.results)) {
-        setUploads(data.results);
-      } else {
-        setUploads([]);
-      }
+      setUploads(data);
     } catch {
       setUploads([]);
     }

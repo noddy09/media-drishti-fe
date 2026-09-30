@@ -45,7 +45,7 @@ const UserManagementPage: React.FC = () => {
 
   const loadTags = async () => {
     const tagsRes = await fetchTagsAPI();
-    setTags(tagsRes.results || tagsRes);
+    setTags(tagsRes);
   };
 
   useEffect(() => { 

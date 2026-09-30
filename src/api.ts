@@ -16,6 +16,14 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// DRF pagination wraps list responses as {count, next, previous, results}.
+// Normalize any list response to a plain array regardless of pagination.
+export const unwrapList = <T = any>(data: any): T[] => {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.results)) return data.results;
+  return [];
+};
+
 // Flag to prevent multiple refresh token requests
 let isRefreshing = false;
 let failedQueue: Array<{

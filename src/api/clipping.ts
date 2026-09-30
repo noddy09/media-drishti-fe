@@ -1,8 +1,8 @@
-import api from '../api';
+import api, { unwrapList } from '../api';
 
 export const fetchClips = async () => {
   const response = await api.get('clipping/clips/', { withCredentials: true });
-  return response.data;
+  return unwrapList(response.data);
 };
 
 export const createClip = async (clipData: any) => {
