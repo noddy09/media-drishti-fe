@@ -7,6 +7,7 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 
 const Navbar: React.FC = () => {
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const isInitialized = useSelector((state: RootState) => state.auth.isInitialized);
   const user = useSelector((state: RootState) => state.auth.user);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ const Navbar: React.FC = () => {
         <Typography variant="h6" sx={{ flexGrow: 1, cursor: 'pointer' }} onClick={() => navigate(isAuthenticated ? '/dashboard' : '/login')}>
           E-News Platform
         </Typography>
-        {isAuthenticated && user ? (
+        {!isInitialized ? null : isAuthenticated && user ? (
           <>
             <Box sx={{ mr: 2 }}>Hi, {user.username} ({user.role})</Box>
             {user.role === 'admin' && <Button color="inherit" component={RouterLink} to="/dashboard">Dashboard</Button>}

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { login } from '../slices/authSlice';
-import { useNavigate } from 'react-router-dom';
 import { Container, Box, TextField, Button, Typography, Paper } from '@mui/material';
 import api from '../api';
 import Cookies from 'js-cookie';
@@ -10,7 +9,6 @@ const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const dispatch = useDispatch();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +21,6 @@ const LoginPage: React.FC = () => {
       // Decode JWT to get user info (role, username)
       const payload = JSON.parse(atob(access.split('.')[1]));
       dispatch(login({ username: payload.username, role: payload.role, accessToken: access }));
-      navigate('/dashboard');
     } catch (err) {
       alert('Invalid credentials');
     }
